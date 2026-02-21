@@ -1,12 +1,13 @@
 """
 Flask Dashboard
-Displays alerts from logs/alerts.json in a web page table.
+Displays alerts from logs/alerts.json in a web page table and
+exposes a /api/alerts JSON endpoint for programmatic access.
 """
 
 import json
 import os
 
-from flask import Flask, render_template_string
+from flask import Flask, jsonify, render_template_string
 
 app = Flask(__name__)
 
@@ -20,6 +21,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="10">
     <title>Zero-Day Prevention — Alerts Dashboard</title>
     <style>
         body { font-family: Arial, sans-serif; background: #1a1a2e; color: #eee; margin: 0; padding: 20px; }
@@ -31,10 +33,12 @@ HTML_TEMPLATE = """
         .no-alerts { text-align: center; padding: 40px; color: #aaa; }
         .badge { display: inline-block; background: #e94560; color: #fff;
                  border-radius: 12px; padding: 2px 10px; font-size: 0.8em; }
+        .refresh-info { text-align: center; color: #888; font-size: 0.85em; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <h1>&#9888; Zero-Day Prevention — Alerts Dashboard</h1>
+    <p class="refresh-info">Auto-refreshes every 10 seconds</p>
     {% if alerts %}
     <p style="text-align:center;">
         Total alerts: <span class="badge">{{ alerts|length }}</span>
@@ -74,14 +78,25 @@ HTML_TEMPLATE = """
 @app.route("/")
 def index():
     """Display all recorded alerts from logs/alerts.json."""
-    alerts = []
+    alerts = _load_alerts()
+    return render_template_string(HTML_TEMPLATE, alerts=alerts)
+
+
+@app.route("/api/alerts")
+def api_alerts():
+    """Return all recorded alerts as a JSON array."""
+    return jsonify(_load_alerts())
+
+
+def _load_alerts():
+    """Read and return the alerts list from disk, or an empty list on error."""
     if os.path.isfile(ALERTS_FILE):
         try:
             with open(ALERTS_FILE, "r", encoding="utf-8") as f:
-                alerts = json.load(f)
+                return json.load(f)
         except (json.JSONDecodeError, IOError):
-            alerts = []
-    return render_template_string(HTML_TEMPLATE, alerts=alerts)
+            pass
+    return []
 
 
 if __name__ == "__main__":
