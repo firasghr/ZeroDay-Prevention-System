@@ -1,28 +1,38 @@
 """
-Process Monitoring Agent
+Process Monitoring Agent — Zero-Day Prevention System
 Continuously monitors running processes and detects newly started ones.
+Optionally auto-terminates high-risk processes when AUTO_PREVENTION_ENABLED is set.
 """
 
+import logging
 import time
+
 import psutil
 
-from engine import detection_engine
+import config
 from agent import prevention
+from engine import detection_engine
+
+logger = logging.getLogger(__name__)
 
 
-def get_process_info(proc):
+def get_process_info(proc: psutil.Process) -> dict | None:
     """
     Collect relevant information for a given psutil.Process object.
 
-    Returns a dictionary with pid, name, cpu, memory, and path,
-    or None if the process information cannot be retrieved.
+    Args:
+        proc: A psutil.Process instance to inspect.
+
+    Returns:
+        A dictionary with pid, name, cpu, memory, and path,
+        or None if the process information cannot be retrieved.
     """
     try:
         with proc.oneshot():
             pid = proc.pid
             name = proc.name()
             cpu = proc.cpu_percent(interval=None)
-            memory = proc.memory_info().rss / (1024 * 1024)  # Convert bytes to MB
+            memory = proc.memory_info().rss / (1024 * 1024)  # bytes → MB
             try:
                 path = proc.exe()
             except (psutil.AccessDenied, psutil.ZombieProcess, OSError):
@@ -39,18 +49,21 @@ def get_process_info(proc):
         return None
 
 
-def monitor_processes():
+def monitor_processes() -> None:
     """
-    Continuously monitor all running processes every 2 seconds.
+    Continuously monitor all running processes every configured interval.
+
     Detects newly started processes and evaluates them for suspicious activity.
+    When AUTO_PREVENTION_ENABLED is True, high-risk processes are terminated
+    automatically after logging an alert.
     """
-    print("[*] Process monitor started.")
-    known_pids = set(p.pid for p in psutil.process_iter())
+    logger.info("Process monitor started.")
+    known_pids: set = set(p.pid for p in psutil.process_iter())
 
     while True:
-        time.sleep(2)
+        time.sleep(config.PROCESS_MONITOR_INTERVAL)
         try:
-            current_pids = set(p.pid for p in psutil.process_iter())
+            current_pids: set = set(p.pid for p in psutil.process_iter())
             new_pids = current_pids - known_pids
 
             for pid in new_pids:
@@ -60,20 +73,42 @@ def monitor_processes():
                     if process_info is None:
                         continue
 
-                    print(
-                        f"[NEW PROCESS] PID: {process_info['pid']} | "
-                        f"Name: {process_info['name']} | "
-                        f"CPU: {process_info['cpu']}% | "
-                        f"Memory: {process_info['memory']} MB | "
-                        f"Path: {process_info['path']}"
+                    logger.debug(
+                        "New process — PID: %s | Name: %s | CPU: %.1f%% | "
+                        "Memory: %.1f MB | Path: %s",
+                        process_info["pid"],
+                        process_info["name"],
+                        process_info["cpu"],
+                        process_info["memory"],
+                        process_info["path"],
                     )
 
                     if detection_engine.is_process_suspicious(process_info):
-                        print(
-                            f"[ALERT] Suspicious process detected: "
-                            f"PID={process_info['pid']}, Name={process_info['name']}"
+                        score = detection_engine.calculate_threat_score(process_info)
+                        threat_level = detection_engine.get_threat_level(score)
+
+                        logger.warning(
+                            "Suspicious process — PID=%s Name=%s Level=%s Score=%d",
+                            process_info["pid"],
+                            process_info["name"],
+                            threat_level.upper(),
+                            score,
                         )
-                        prevention.log_alert(process_info)
+
+                        prevention.log_alert(
+                            process_info,
+                            threat_level=threat_level,
+                            score=score,
+                        )
+
+                        # Auto-prevention: kill high-risk processes if enabled
+                        if config.AUTO_PREVENTION_ENABLED and threat_level == "high":
+                            logger.critical(
+                                "AUTO-PREVENTION: terminating high-risk process PID=%s (%s)",
+                                process_info["pid"],
+                                process_info["name"],
+                            )
+                            prevention.kill_process(process_info["pid"])
 
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
@@ -81,8 +116,13 @@ def monitor_processes():
             known_pids = current_pids
 
         except Exception as exc:  # pylint: disable=broad-except
-            print(f"[ERROR] Unexpected error in process monitor: {exc}")
+            logger.error("Unexpected error in process monitor: %s", exc)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=getattr(logging, config.LOG_LEVEL),
+        format=config.LOG_FORMAT,
+        datefmt=config.LOG_DATE_FORMAT,
+    )
     monitor_processes()

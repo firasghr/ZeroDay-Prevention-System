@@ -79,6 +79,10 @@ function buildRow(alert) {
     alert.timestamp, alert.name, alert.pid, alert.cpu, alert.memory, alert.path
   ].map(v => String(v || '').toLowerCase()).join(' ');
 
+  const score = (typeof alert.threat_score === 'number') ? alert.threat_score : null;
+  const scoreDisplay = (score !== null) ? `${score}/100` : '—';
+  const scoreClass = (score !== null && score >= 70) ? 'high' : (score !== null && score >= 30) ? 'medium' : '';
+
   tr.innerHTML = `
     <td class="col-timestamp">${formatTimestamp(alert.timestamp)}</td>
     <td class="col-name">${escHtml(alert.name || '—')}</td>
@@ -86,6 +90,7 @@ function buildRow(alert) {
     <td class="col-cpu ${cpuClass}">${cpu.toFixed(1)}&thinsp;%</td>
     <td class="col-mem ${memClass}">${memory.toFixed(1)}&thinsp;MB</td>
     <td class="col-path" title="${escHtml(alert.path || '')}">${escHtml(alert.path || '—')}</td>
+    <td class="col-score ${scoreClass}">${scoreDisplay}</td>
     <td>${badgeMap[level]}</td>
   `;
   return tr;
@@ -97,7 +102,7 @@ function renderTable(alerts) {
   if (!alerts || alerts.length === 0) {
     alertsBody.innerHTML = `
       <tr class="empty-row">
-        <td colspan="7">
+        <td colspan="8">
           <div class="empty-state">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>

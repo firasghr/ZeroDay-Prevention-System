@@ -89,7 +89,13 @@ class TestDashboardRoutes(unittest.TestCase):
             with patch("dashboard.app.ALERTS_FILE", tmp_path):
                 resp = self.client.get("/api/alerts")
             self.assertEqual(resp.status_code, 200)
-            self.assertEqual(resp.get_json(), data)
+            payload = resp.get_json()
+            # API enriches alerts with threat_score and threat_level
+            self.assertEqual(len(payload), 1)
+            self.assertEqual(payload[0]["pid"], 1)
+            self.assertEqual(payload[0]["name"], "proc1")
+            self.assertIn("threat_score", payload[0])
+            self.assertIn("threat_level", payload[0])
         finally:
             os.unlink(tmp_path)
 
@@ -111,3 +117,38 @@ class TestDashboardRoutes(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestApiStats(unittest.TestCase):
+    """Tests for the /api/stats endpoint."""
+
+    def setUp(self):
+        app.config["TESTING"] = True
+        self.client = app.test_client()
+
+    def test_api_stats_returns_json_with_keys(self):
+        with patch("dashboard.app.ALERTS_FILE", "/nonexistent/alerts.json"):
+            resp = self.client.get("/api/stats")
+        self.assertEqual(resp.status_code, 200)
+        payload = resp.get_json()
+        for key in ("total", "high", "medium", "low", "last_timestamp", "auto_prevention"):
+            self.assertIn(key, payload)
+
+    def test_api_stats_total_matches_alert_count(self):
+        data = [
+            {"pid": 1, "name": "p1", "threat_level": "high", "threat_score": 80},
+            {"pid": 2, "name": "p2", "threat_level": "low",  "threat_score": 10},
+        ]
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            import json
+            json.dump(data, f)
+            tmp_path = f.name
+        try:
+            with patch("dashboard.app.ALERTS_FILE", tmp_path):
+                resp = self.client.get("/api/stats")
+            payload = resp.get_json()
+            self.assertEqual(payload["total"], 2)
+            self.assertEqual(payload["high"], 1)
+            self.assertEqual(payload["low"], 1)
+        finally:
+            os.unlink(tmp_path)
