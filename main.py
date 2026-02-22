@@ -13,7 +13,7 @@ from file_monitor import file_monitor
 from network import network_monitor
 
 MONITOR_PATH = os.path.dirname(os.path.abspath(__file__))
-DASHBOARD_PORT = 5000
+DASHBOARD_PORT = 5001
 
 
 def _run_dashboard():

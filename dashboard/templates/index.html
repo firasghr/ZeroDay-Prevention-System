@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zero-Day Prevention System — EDR Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TOP NAVIGATION BAR
+  ══════════════════════════════════════════════════════════ -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      <span class="nav-title">Zero-Day Prevention System</span>
+    </div>
+    <div class="navbar-right">
+      <div class="status-badge" id="systemStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">System Active</span>
+      </div>
+      <div class="last-refresh">
+        Last refresh: <span id="lastRefreshTime">—</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MAIN CONTENT
+  ══════════════════════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- STATS CARDS -->
+    <section class="stats-grid">
+
+      <div class="stat-card" id="cardTotal">
+        <div class="stat-icon stat-icon--blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Total Alerts</span>
+          <span class="stat-value" id="statTotal">—</span>
+        </div>
+      </div>
+
+      <div class="stat-card" id="cardSuspicious">
+        <div class="stat-icon stat-icon--red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">High-Threat Processes</span>
+          <span class="stat-value stat-value--danger" id="statHigh">—</span>
+        </div>
+      </div>
+
+      <div class="stat-card" id="cardLast">
+        <div class="stat-icon stat-icon--amber">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Last Detection</span>
+          <span class="stat-value stat-value--small" id="statLast">—</span>
+        </div>
+      </div>
+
+      <div class="stat-card" id="cardStatus">
+        <div class="stat-icon stat-icon--green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Monitor Status</span>
+          <span class="stat-value stat-value--success" id="statStatus">Active</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ALERTS TABLE PANEL -->
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+          Threat Alerts
+          <span class="panel-badge" id="alertsBadge">0</span>
+        </div>
+        <div class="panel-controls">
+          <div class="search-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="searchBox" class="search-input" placeholder="Search alerts…" />
+          </div>
+          <button class="btn-sort" id="sortBtn" title="Sort by timestamp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+              <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            Sort ↕
+          </button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="alerts-table" id="alertsTable">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Process Name</th>
+              <th>PID</th>
+              <th>CPU %</th>
+              <th>Memory MB</th>
+              <th>Path</th>
+              <th>Threat Level</th>
+            </tr>
+          </thead>
+          <tbody id="alertsBody">
+            <tr class="empty-row">
+              <td colspan="7">
+                <div class="empty-state">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <polyline points="9 12 11 14 15 10"/>
+                  </svg>
+                  <p>No alerts detected. System is clean.</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel-footer">
+        <span id="rowCount">0 alerts shown</span>
+        <span class="auto-refresh-label">
+          <span class="pulse-dot"></span>
+          Auto-refreshing every 5 s
+        </span>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

@@ -38,8 +38,9 @@ def get_connections():
                         "process_name": process_name,
                     }
                 )
-    except (psutil.AccessDenied, PermissionError) as exc:
-        print(f"[ERROR] Cannot retrieve network connections: {exc}")
+    except (psutil.AccessDenied, PermissionError):
+        # macOS requires root for net_connections(); return empty list silently.
+        pass
 
     return connections
 
@@ -52,12 +53,19 @@ def monitor_network():
     and prevent unbounded memory growth.
     """
     print("[*] Network monitor started.")
+    _warned_no_perms = False
     known_connections = set()
 
     while True:
         time.sleep(5)
         try:
             current = get_connections()
+            if not current and not _warned_no_perms:
+                _warned_no_perms = True
+                print(
+                    "[WARNING] Network monitor: no connections retrieved. "
+                    "On macOS, run with sudo for full network visibility."
+                )
             current_keys = set()
             for conn in current:
                 key = (conn["pid"], conn["local_address"], conn["remote_address"])
