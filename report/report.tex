@@ -1,7 +1,9 @@
 %% ============================================================
 %%  Zero-Day Prevention System — Capstone Report
 %%  Author: Youssef Cherif
+%%  Supervisors: Ghazi Oueslati, Rihab Bousaada
 %%  South Mediterranean University Medtech — 2025-2026
+%%  Industry Partner: Tunisie Telecom
 %%  Compile with:  pdflatex report.tex  (twice for ToC/refs)
 %% ============================================================
 \documentclass[12pt,a4paper,oneside]{report}
@@ -14,7 +16,7 @@
 %% ── Page layout ─────────────────────────────────────────────
 \usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry}
 \usepackage{setspace}
-\onehalfspacing
+\setstretch{1.35}
 
 %% ── Typography ───────────────────────────────────────────────
 \usepackage{lmodern}
@@ -25,11 +27,35 @@
 \usepackage[table,xcdraw]{xcolor}
 \definecolor{codegray}{rgb}{0.95,0.95,0.95}
 \definecolor{deepblue}{RGB}{0,51,102}
+\definecolor{midblue}{RGB}{0,82,153}
 \definecolor{lightblue}{RGB}{220,235,250}
 \definecolor{alertred}{RGB}{200,30,30}
 \definecolor{alertorange}{RGB}{230,115,0}
 \definecolor{alertgreen}{RGB}{0,128,0}
 \definecolor{sectiongray}{RGB}{245,245,245}
+\definecolor{tikzbox}{RGB}{230,240,255}
+\definecolor{tikzarrow}{RGB}{0,82,153}
+
+%% ── TikZ (architecture & lifecycle diagrams) ─────────────────
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,fit,shadows.blur,calc,backgrounds,decorations.pathreplacing}
+
+\tikzset{
+  block/.style={
+    rectangle, rounded corners=4pt,
+    draw=deepblue, fill=tikzbox,
+    text width=3.2cm, align=center,
+    minimum height=1.1cm,
+    font=\small\bfseries,
+    drop shadow={shadow blur steps=4, shadow xshift=1pt, shadow yshift=-1pt}
+  },
+  wideblock/.style={block, text width=4.6cm},
+  smallblock/.style={block, text width=2.4cm, minimum height=0.9cm, font=\footnotesize\bfseries},
+  arrowstyle/.style={-{Stealth[length=6pt]}, thick, color=tikzarrow},
+  dasharrow/.style={-{Stealth[length=6pt]}, dashed, thick, color=midblue!60},
+  labelbox/.style={rectangle, rounded corners=2pt, fill=deepblue, text=white,
+                   font=\scriptsize\bfseries, inner sep=3pt}
+}
 
 %% ── Tables ───────────────────────────────────────────────────
 \usepackage{booktabs}
@@ -46,19 +72,21 @@
   breaklines=true,
   frame=single,
   framerule=0pt,
-  xleftmargin=6pt,
-  xrightmargin=6pt,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
   showstringspaces=false,
   tabsize=4,
   captionpos=b,
   numbers=left,
   numberstyle=\tiny\color{gray},
-  numbersep=8pt,
+  numbersep=10pt,
 }
-\lstdefinestyle{python}{language=Python,
-  keywordstyle=\color{blue}\bfseries,
+\lstdefinestyle{python}{
+  language=Python,
+  keywordstyle=\color{deepblue}\bfseries,
   stringstyle=\color{brown},
   commentstyle=\color{olive}\itshape,
+  morekeywords={True,False,None},
 }
 \lstdefinestyle{json}{
   string=[s]{"}{"},
@@ -74,14 +102,14 @@
 \fancyhead[L]{\small\itshape\leftmark}
 \fancyhead[R]{\small\textcolor{deepblue}{Zero-Day Prevention System}}
 \fancyfoot[C]{\thepage}
-\fancyfoot[R]{\small\textcolor{gray}{SMU Medtech --- 2025--2026}}
+\fancyfoot[R]{\small\textcolor{gray}{SMU Medtech \textbar{} 2025--2026}}
 \renewcommand{\headrulewidth}{0.4pt}
 \renewcommand{\footrulewidth}{0.2pt}
 
 %% ── Hyperlinks ───────────────────────────────────────────────
 \usepackage[colorlinks=true,
             linkcolor=deepblue,
-            urlcolor=deepblue,
+            urlcolor=midblue,
             citecolor=deepblue,
             pdftitle={Design and Implementation of a Zero-Day Attack Prevention System},
             pdfauthor={Youssef Cherif},
@@ -91,34 +119,42 @@
 
 %% ── Captions ─────────────────────────────────────────────────
 \usepackage{caption}
-\captionsetup{font=small, labelfont={bf,color=deepblue}, margin=10pt}
+\captionsetup{font=small, labelfont={bf,color=deepblue}, margin=10pt, skip=8pt}
 
 %% ── Misc ─────────────────────────────────────────────────────
 \usepackage{enumitem}
+\setlist[itemize]{noitemsep, topsep=4pt, partopsep=2pt}
+\setlist[enumerate]{noitemsep, topsep=4pt, partopsep=2pt}
 \usepackage{amsmath}
 \usepackage{float}
 \usepackage{tcolorbox}
 \tcbuselibrary{skins,breakable}
 \usepackage{parskip}
 \setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
 
 %% ── Chapter & section style ──────────────────────────────────
 \usepackage{titlesec}
 \titleformat{\chapter}[display]
   {\normalfont\huge\bfseries\color{deepblue}}
   {\Large\scshape\chaptertitlename\ \thechapter}{14pt}{\Huge}
-  [\vspace{4pt}\titlerule[0.6pt]]
-\titlespacing*{\chapter}{0pt}{-10pt}{35pt}
+  [\vspace{4pt}\titlerule[0.8pt]\vspace{2pt}]
+\titlespacing*{\chapter}{0pt}{-10pt}{38pt}
 
 \titleformat{\section}
   {\normalfont\large\bfseries\color{deepblue}}
   {\thesection}{1em}{}
-\titlespacing*{\section}{0pt}{18pt}{6pt}
+\titlespacing*{\section}{0pt}{20pt}{6pt}
 
 \titleformat{\subsection}
-  {\normalfont\normalsize\bfseries}
+  {\normalfont\normalsize\bfseries\color{midblue}}
   {\thesubsection}{1em}{}
-\titlespacing*{\subsection}{0pt}{12pt}{4pt}
+\titlespacing*{\subsection}{0pt}{14pt}{4pt}
+
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\itshape}
+  {\thesubsubsection}{1em}{}
+\titlespacing*{\subsubsection}{0pt}{10pt}{2pt}
 
 %% ─────────────────────────────────────────────────────────────
 \begin{document}
@@ -132,70 +168,102 @@
 \begin{titlepage}
   \newgeometry{top=2cm,bottom=2cm,left=2.5cm,right=2.5cm}
   \centering
+  \thispagestyle{empty}
 
-  %% Top banner
-  \colorbox{deepblue}{\parbox{\linewidth}{%
-    \centering\vspace{0.5cm}
-    {\color{white}\large\bfseries South Mediterranean University Medtech}\\[0.25cm]
-    {\color{white}\normalsize Faculty of Computer Science \& Engineering}\\[0.25cm]
-    {\color{white}\normalsize Department of Cybersecurity}
-    \vspace{0.5cm}
-  }}
+  %% ── Top institutional banner ───────────────────────────────
+  \begin{tcolorbox}[
+    enhanced,
+    colback=deepblue,
+    colframe=deepblue,
+    arc=0pt,
+    boxrule=0pt,
+    left=0pt, right=0pt, top=10pt, bottom=10pt,
+    width=\linewidth,
+    enlarge left by=0pt,
+    enlarge right by=0pt
+  ]
+    \centering
+    {\color{white}\large\bfseries South Mediterranean University Medtech}\\[4pt]
+    {\color{white}\normalsize Faculty of Computer Science \& Engineering}\\[2pt]
+    {\color{white}\small Department of Cybersecurity}
+  \end{tcolorbox}
 
-  \vspace{1.8cm}
+  \vspace{1.5cm}
 
+  %% ── Degree label ───────────────────────────────────────────
+  {\normalsize\scshape\color{midblue}
+    Capstone Project Report --- Licence in Computer Science}
+
+  \vspace{0.6cm}
+  \textcolor{deepblue!40}{\rule{0.6\linewidth}{0.5pt}}
+  \vspace{0.6cm}
+
+  %% ── Main title box ─────────────────────────────────────────
   \begin{tcolorbox}[
     enhanced,
     colback=lightblue,
     colframe=deepblue,
-    arc=4pt,
-    boxrule=1.5pt,
-    left=12pt, right=12pt, top=12pt, bottom=12pt
+    arc=6pt,
+    boxrule=1.8pt,
+    left=16pt, right=16pt, top=16pt, bottom=16pt,
+    drop shadow={shadow blur steps=5, shadow xshift=2pt, shadow yshift=-2pt,
+                 fill=deepblue!30}
   ]
     \centering
     {\LARGE\bfseries\color{deepblue}
-      Design and Implementation of a\\[0.4cm]
+      Design and Implementation of a\\[6pt]
       Zero-Day Attack Prevention System}
   \end{tcolorbox}
 
-  \vspace{1.2cm}
-
-  {\large\itshape Capstone Project Report}\\[0.3cm]
-  {\normalsize Submitted in Partial Fulfilment of the Requirements\\
-   for the Degree of \textbf{Licence in Computer Science}}
-
   \vspace{1.8cm}
 
+  %% ── Author / supervisor / partner info ─────────────────────
   \begin{tcolorbox}[
     enhanced,
     colback=sectiongray,
-    colframe=deepblue!40,
-    arc=3pt,
+    colframe=deepblue!50,
+    arc=4pt,
     boxrule=0.8pt,
-    left=20pt, right=20pt, top=10pt, bottom=10pt,
-    width=0.80\linewidth
+    left=24pt, right=24pt, top=12pt, bottom=12pt,
+    width=0.82\linewidth
   ]
-    \renewcommand{\arraystretch}{1.6}
-    \begin{tabular}{@{}r@{\hspace{10pt}}l@{}}
+    \renewcommand{\arraystretch}{1.7}
+    \begin{tabular}{@{}r@{\hspace{12pt}}l@{}}
       \textcolor{deepblue}{\textbf{Author:}}
-        & Youssef Cherif \\
+        & Youssef Cherif \\[2pt]
       \textcolor{deepblue}{\textbf{Supervisors:}}
-        & Ghazi Oueslati \\
-        & Rihab Bousaada \\
+        & Mr.\ Ghazi Oueslati \\
+        & Mrs.\ Rihab Bousaada \\[2pt]
       \textcolor{deepblue}{\textbf{Industry Partner:}}
-        & Tunisie Telecom \\
+        & Tunisie Telecom \\[2pt]
       \textcolor{deepblue}{\textbf{Academic Year:}}
         & 2025--2026 \\
     \end{tabular}
   \end{tcolorbox}
 
+  \vspace{0.8cm}
+
+  {\small\color{gray}
+    Submitted in Partial Fulfilment of the Requirements\\
+    for the Degree of \textbf{Licence in Computer Science}}
+
   \vfill
 
-  \colorbox{deepblue}{\parbox{\linewidth}{%
-    \centering\vspace{0.3cm}
-    {\color{white}\small Capstone Project \textbar{} Cybersecurity Engineering \textbar{} SMU Medtech}
-    \vspace{0.3cm}
-  }}
+  %% ── Bottom footer bar ──────────────────────────────────────
+  \begin{tcolorbox}[
+    enhanced,
+    colback=deepblue,
+    colframe=deepblue,
+    arc=0pt,
+    boxrule=0pt,
+    left=0pt, right=0pt, top=8pt, bottom=8pt,
+    width=\linewidth
+  ]
+    \centering
+    {\color{white}\small
+      Capstone Project \textbar{} Cybersecurity Engineering
+      \textbar{} SMU Medtech \textbar{} 2025--2026}
+  \end{tcolorbox}
   \restoregeometry
 \end{titlepage}
 
@@ -277,7 +345,7 @@ detection, threat scoring, process monitoring, Python, Flask, cybersecurity.
 \chapter*{List of Abbreviations}
 \addcontentsline{toc}{chapter}{List of Abbreviations}
 
-\begin{tabular}{@{}ll@{}}
+\begin{tabularx}{\linewidth}{@{}l X@{}}
   \toprule
   \textbf{Abbreviation} & \textbf{Definition} \\
   \midrule
@@ -312,7 +380,7 @@ detection, threat scoring, process monitoring, Python, Flask, cybersecurity.
   \textbf{XDR}    & Extended Detection and Response \\
   \textbf{ZDPS}   & Zero-Day Prevention System \\
   \bottomrule
-\end{tabular}
+\end{tabularx}
 
 \clearpage
 \pagenumbering{arabic}
@@ -418,11 +486,42 @@ distinct phases, as illustrated in Figure~\ref{fig:zeroday-lifecycle}.
 
 \begin{figure}[H]
   \centering
-  \fbox{\parbox{0.85\textwidth}{\centering\vspace{1.5cm}
-    \textit{[Placeholder — Zero-Day Lifecycle Diagram]}\\
-    \textit{Phases: Discovery $\to$ Private Exploitation $\to$ Public Disclosure $\to$
-             Patch Release $\to$ Signature Update}
-    \vspace{1.5cm}}}
+  \begin{tikzpicture}[node distance=0.6cm and 1.0cm]
+    %% Phase nodes
+    \node[smallblock, fill=red!15, draw=red!60]
+      (disc) {Discovery\\(Unknown)};
+    \node[smallblock, fill=red!25, draw=red!70, right=of disc]
+      (priv) {Private\\Exploitation};
+    \node[smallblock, fill=orange!20, draw=orange!70, right=of priv]
+      (disc2) {Public\\Disclosure};
+    \node[smallblock, fill=yellow!20, draw=yellow!70, right=of disc2]
+      (patch) {Patch\\Released};
+    \node[smallblock, fill=green!20, draw=alertgreen!70, right=of patch]
+      (sig) {Signature\\Updated};
+
+    %% Arrows
+    \draw[arrowstyle] (disc) -- (priv);
+    \draw[arrowstyle] (priv) -- (disc2);
+    \draw[arrowstyle] (disc2) -- (patch);
+    \draw[arrowstyle] (patch) -- (sig);
+
+    %% Zero-day window brace label
+    \draw[thick, decorate, decoration={brace,amplitude=6pt},
+          color=alertred]
+      ([yshift=8pt]disc.north west) -- ([yshift=8pt]disc2.north east)
+      node[midway, above=8pt, font=\scriptsize\bfseries, color=alertred]
+           {Zero-Day Window (hours to months)};
+
+    %% AV blind label
+    \node[below=0.5cm of priv, font=\scriptsize\itshape, color=alertred,
+          align=center]
+      {AV/signature-based\\defences: \textbf{blind}};
+
+    %% Protected label
+    \node[below=0.5cm of sig, font=\scriptsize\itshape, color=alertgreen,
+          align=center]
+      {AV effective\\from here};
+  \end{tikzpicture}
   \caption{Zero-day vulnerability lifecycle}
   \label{fig:zeroday-lifecycle}
 \end{figure}
@@ -681,12 +780,56 @@ architecture.
 
 \begin{figure}[H]
   \centering
-  \fbox{\parbox{0.92\textwidth}{\centering\vspace{2cm}
-    \textit{[Placeholder — System Architecture Diagram]}\\[0.4cm]
-    \textit{main.py $\to$ \{Process Monitor, File Monitor, Network Monitor, Dashboard\}}\\
-    \textit{Process Monitor $\to$ Detection Engine $\to$ Prevention Module}\\
-    \textit{Prevention Module $\to$ logs/alerts.json $\leftarrow$ Dashboard/Flask}
-    \vspace{2cm}}}
+  \begin{tikzpicture}[node distance=0.7cm and 1.2cm]
+    %% Entry point
+    \node[wideblock] (main) {\texttt{main.py}\\Entry Point};
+
+    %% Four monitors (below, spread horizontally)
+    \node[block, below left=1.0cm and 2.6cm of main]  (pm)  {Process\\Monitor};
+    \node[block, below left=1.0cm and 0.6cm of main]  (fm)  {File\\Monitor};
+    \node[block, below right=1.0cm and 0.6cm of main] (nm)  {Network\\Monitor};
+    \node[block, below right=1.0cm and 2.6cm of main] (dash){Dashboard\\(Flask)};
+
+    %% Detection engine
+    \node[wideblock, fill=deepblue!15, draw=deepblue,
+          below=2.0cm of pm, xshift=2.2cm] (det) {Detection Engine};
+
+    %% Prevention module
+    \node[wideblock, fill=alertred!10, draw=alertred!60,
+          below=0.9cm of det] (prev) {Prevention Module};
+
+    %% Storage
+    \node[block, fill=green!10, draw=alertgreen!60,
+          below=0.9cm of prev] (log)  {\texttt{logs/alerts.json}};
+
+    %% main -> monitors
+    \foreach \n in {pm,fm,nm,dash}
+      \draw[arrowstyle] (main) -- (\n);
+
+    %% monitors -> detection engine (pm and fm)
+    \draw[arrowstyle] (pm) -- (det);
+    \draw[arrowstyle] (fm) -- (det);
+
+    %% detection -> prevention
+    \draw[arrowstyle] (det) -- (prev);
+
+    %% prevention -> log
+    \draw[arrowstyle] (prev) -- (log);
+
+    %% dashboard reads log (dashed feedback)
+    \draw[dasharrow] (log.east) -- ++(1.4,0) |-
+          node[near end, right, font=\scriptsize, color=midblue]
+               {REST API} (dash.east);
+
+    %% network -> detection (dashed, lower priority)
+    \draw[dasharrow] (nm) -- ++(0,-0.6) -| (det.north);
+
+    %% Labels
+    \node[labelbox, above=4pt of pm]  {\scriptsize Thread 1};
+    \node[labelbox, above=4pt of fm]  {\scriptsize Thread 2};
+    \node[labelbox, above=4pt of nm]  {\scriptsize Thread 3};
+    \node[labelbox, above=4pt of dash]{\scriptsize Thread 4};
+  \end{tikzpicture}
   \caption{Zero-Day Prevention System high-level architecture}
   \label{fig:architecture}
 \end{figure}
@@ -1389,10 +1532,19 @@ def test_api_alerts_returns_list(client, tmp_path):
 
 \begin{figure}[H]
   \centering
-  \fbox{\parbox{0.92\textwidth}{\centering\vspace{2cm}
-    \textit{[Placeholder — Dashboard screenshot showing HIGH alert for /tmp/ process]}
-    \vspace{2cm}}}
-  \caption{Dashboard view — Scenario 1: dropped-binary detection}
+  \begin{tcolorbox}[
+    enhanced, colback=sectiongray, colframe=deepblue!40,
+    arc=4pt, boxrule=0.8pt,
+    left=10pt, right=10pt, top=18pt, bottom=18pt,
+    width=0.92\linewidth
+  ]
+    \centering
+    \textcolor{deepblue!60}{\large\itshape [Dashboard Screenshot]}\\[6pt]
+    \small\color{gray}
+    High-risk alert row highlighted in red \textbar{}
+    Threat score badge \textbar{} Auto-prevention status indicator
+  \end{tcolorbox}
+  \caption{Dashboard view --- Scenario 1: dropped-binary detection}
   \label{fig:scenario1}
 \end{figure}
 
@@ -1446,20 +1598,39 @@ def test_api_alerts_returns_list(client, tmp_path):
 
 \begin{figure}[H]
   \centering
-  \fbox{\parbox{0.92\textwidth}{\centering\vspace{2.5cm}
-    \textit{[Placeholder — Full dashboard screenshot: alert table, threat badges, stats]}
-    \vspace{2.5cm}}}
-  \caption{ZDPS security dashboard — live alert view}
+  \begin{tcolorbox}[
+    enhanced, colback=sectiongray, colframe=deepblue!40,
+    arc=4pt, boxrule=0.8pt,
+    left=10pt, right=10pt, top=24pt, bottom=24pt,
+    width=0.92\linewidth
+  ]
+    \centering
+    \textcolor{deepblue!60}{\large\itshape [Full Dashboard Screenshot]}\\[6pt]
+    \small\color{gray}
+    Alert table \textbar{} Colour-coded threat badges (High / Medium / Low)
+    \textbar{} Search box \textbar{} Numeric threat score column
+  \end{tcolorbox}
+  \caption{ZDPS security dashboard --- live alert view}
   \label{fig:dashboard-main}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \fbox{\parbox{0.92\textwidth}{\centering\vspace{2.5cm}
-    \textit{[Placeholder — Dashboard screenshot: stats bar showing
-             High / Medium / Low counts]}
-    \vspace{2.5cm}}}
-  \caption{ZDPS security dashboard — statistics panel}
+  \begin{tcolorbox}[
+    enhanced, colback=sectiongray, colframe=deepblue!40,
+    arc=4pt, boxrule=0.8pt,
+    left=10pt, right=10pt, top=24pt, bottom=24pt,
+    width=0.92\linewidth
+  ]
+    \centering
+    \textcolor{deepblue!60}{\large\itshape [Statistics Panel Screenshot]}\\[6pt]
+    \small\color{gray}
+    Total alerts counter \textbar{}
+    High / Medium / Low breakdown \textbar{}
+    Last detection timestamp \textbar{}
+    Auto-prevention toggle status
+  \end{tcolorbox}
+  \caption{ZDPS security dashboard --- statistics panel}
   \label{fig:dashboard-stats}
 \end{figure}
 
