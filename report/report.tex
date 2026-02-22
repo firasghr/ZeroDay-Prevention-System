@@ -1,5 +1,7 @@
 %% ============================================================
 %%  Zero-Day Prevention System — Capstone Report
+%%  Author: Youssef Cherif
+%%  South Mediterranean University Medtech — 2025-2026
 %%  Compile with:  pdflatex report.tex  (twice for ToC/refs)
 %% ============================================================
 \documentclass[12pt,a4paper,oneside]{report}
@@ -23,15 +25,18 @@
 \usepackage[table,xcdraw]{xcolor}
 \definecolor{codegray}{rgb}{0.95,0.95,0.95}
 \definecolor{deepblue}{RGB}{0,51,102}
+\definecolor{lightblue}{RGB}{220,235,250}
 \definecolor{alertred}{RGB}{200,30,30}
 \definecolor{alertorange}{RGB}{230,115,0}
 \definecolor{alertgreen}{RGB}{0,128,0}
+\definecolor{sectiongray}{RGB}{245,245,245}
 
 %% ── Tables ───────────────────────────────────────────────────
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{array}
 \usepackage{multirow}
+\usepackage{tabularx}
 
 %% ── Code listings ────────────────────────────────────────────
 \usepackage{listings}
@@ -66,20 +71,27 @@
 \usepackage{fancyhdr}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\leftmark}
-\fancyhead[R]{\small Zero-Day Prevention System}
+\fancyhead[L]{\small\itshape\leftmark}
+\fancyhead[R]{\small\textcolor{deepblue}{Zero-Day Prevention System}}
 \fancyfoot[C]{\thepage}
+\fancyfoot[R]{\small\textcolor{gray}{SMU Medtech --- 2025--2026}}
 \renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.2pt}
 
 %% ── Hyperlinks ───────────────────────────────────────────────
-\usepackage[hidelinks, colorlinks=true,
+\usepackage[colorlinks=true,
             linkcolor=deepblue,
             urlcolor=deepblue,
-            citecolor=deepblue]{hyperref}
+            citecolor=deepblue,
+            pdftitle={Design and Implementation of a Zero-Day Attack Prevention System},
+            pdfauthor={Youssef Cherif},
+            pdfsubject={Cybersecurity Capstone Report},
+            pdfkeywords={zero-day, EDR, cybersecurity, behaviour-based detection}
+            ]{hyperref}
 
 %% ── Captions ─────────────────────────────────────────────────
 \usepackage{caption}
-\captionsetup{font=small, labelfont=bf}
+\captionsetup{font=small, labelfont={bf,color=deepblue}, margin=10pt}
 
 %% ── Misc ─────────────────────────────────────────────────────
 \usepackage{enumitem}
@@ -87,13 +99,26 @@
 \usepackage{float}
 \usepackage{tcolorbox}
 \tcbuselibrary{skins,breakable}
+\usepackage{parskip}
+\setlength{\parskip}{6pt}
 
-%% ── Chapter style ────────────────────────────────────────────
+%% ── Chapter & section style ──────────────────────────────────
 \usepackage{titlesec}
 \titleformat{\chapter}[display]
   {\normalfont\huge\bfseries\color{deepblue}}
-  {\chaptertitlename\ \thechapter}{18pt}{\Huge}
-\titlespacing*{\chapter}{0pt}{-10pt}{30pt}
+  {\Large\scshape\chaptertitlename\ \thechapter}{14pt}{\Huge}
+  [\vspace{4pt}\titlerule[0.6pt]]
+\titlespacing*{\chapter}{0pt}{-10pt}{35pt}
+
+\titleformat{\section}
+  {\normalfont\large\bfseries\color{deepblue}}
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{18pt}{6pt}
+
+\titleformat{\subsection}
+  {\normalfont\normalsize\bfseries}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{4pt}
 
 %% ─────────────────────────────────────────────────────────────
 \begin{document}
@@ -105,31 +130,108 @@
 
 %% ── Cover page ───────────────────────────────────────────────
 \begin{titlepage}
+  \newgeometry{top=2cm,bottom=2cm,left=2.5cm,right=2.5cm}
   \centering
-  \vspace*{1.5cm}
 
-  {\Large\bfseries\color{deepblue} University Name}\\[0.4cm]
-  {\large Faculty of Computer Science and Engineering}\\[0.2cm]
-  {\large Department of Cybersecurity}\\[2.5cm]
+  %% Top banner
+  \colorbox{deepblue}{\parbox{\linewidth}{%
+    \centering\vspace{0.5cm}
+    {\color{white}\large\bfseries South Mediterranean University Medtech}\\[0.25cm]
+    {\color{white}\normalsize Faculty of Computer Science \& Engineering}\\[0.25cm]
+    {\color{white}\normalsize Department of Cybersecurity}
+    \vspace{0.5cm}
+  }}
 
-  \rule{\linewidth}{1.5pt}\\[0.6cm]
-  {\LARGE\bfseries Design and Implementation of a\\[0.3cm]
-   Zero-Day Attack Prevention System}\\[0.6cm]
-  \rule{\linewidth}{1.5pt}\\[2cm]
+  \vspace{1.8cm}
 
-  {\large Capstone Project Report\\
-   Submitted in Partial Fulfilment of the Requirements\\
-   for the Degree of Bachelor of Science in Cybersecurity Engineering}\\[2.5cm]
+  \begin{tcolorbox}[
+    enhanced,
+    colback=lightblue,
+    colframe=deepblue,
+    arc=4pt,
+    boxrule=1.5pt,
+    left=12pt, right=12pt, top=12pt, bottom=12pt
+  ]
+    \centering
+    {\LARGE\bfseries\color{deepblue}
+      Design and Implementation of a\\[0.4cm]
+      Zero-Day Attack Prevention System}
+  \end{tcolorbox}
 
-  \begin{tabular}{rl}
-    \textbf{Author:}        & Firas Ghr \\[4pt]
-    \textbf{Supervisor:}    & Prof.\ [Supervisor Name] \\[4pt]
-    \textbf{Academic Year:} & 2024--2025 \\
-  \end{tabular}\\[3cm]
+  \vspace{1.2cm}
+
+  {\large\itshape Capstone Project Report}\\[0.3cm]
+  {\normalsize Submitted in Partial Fulfilment of the Requirements\\
+   for the Degree of \textbf{Licence in Computer Science}}
+
+  \vspace{1.8cm}
+
+  \begin{tcolorbox}[
+    enhanced,
+    colback=sectiongray,
+    colframe=deepblue!40,
+    arc=3pt,
+    boxrule=0.8pt,
+    left=20pt, right=20pt, top=10pt, bottom=10pt,
+    width=0.80\linewidth
+  ]
+    \renewcommand{\arraystretch}{1.6}
+    \begin{tabular}{@{}r@{\hspace{10pt}}l@{}}
+      \textcolor{deepblue}{\textbf{Author:}}
+        & Youssef Cherif \\
+      \textcolor{deepblue}{\textbf{Supervisors:}}
+        & Ghazi Oueslati \\
+        & Rihab Bousaada \\
+      \textcolor{deepblue}{\textbf{Industry Partner:}}
+        & Tunisie Telecom \\
+      \textcolor{deepblue}{\textbf{Academic Year:}}
+        & 2025--2026 \\
+    \end{tabular}
+  \end{tcolorbox}
 
   \vfill
-  {\small\today}
+
+  \colorbox{deepblue}{\parbox{\linewidth}{%
+    \centering\vspace{0.3cm}
+    {\color{white}\small Capstone Project \textbar{} Cybersecurity Engineering \textbar{} SMU Medtech}
+    \vspace{0.3cm}
+  }}
+  \restoregeometry
 \end{titlepage}
+
+%% ── Dedication ───────────────────────────────────────────────
+\chapter*{Dedication}
+\addcontentsline{toc}{chapter}{Dedication}
+\thispagestyle{empty}
+\vspace*{3cm}
+\begin{center}
+  \itshape
+  To my family, for their unwavering support and encouragement\\
+  throughout this academic journey.\\[0.8cm]
+  To all those who believe that security is a fundamental right,\\
+  not a privilege.
+\end{center}
+
+%% ── Acknowledgements ─────────────────────────────────────────
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+
+I would like to express my sincere gratitude to my supervisors,
+\textbf{Mr.\ Ghazi Oueslati} and \textbf{Mrs.\ Rihab Bousaada}, for their guidance,
+availability, and invaluable feedback throughout the duration of this project.  Their
+expertise in cybersecurity and software engineering significantly shaped the direction
+and quality of this work.
+
+I am grateful to \textbf{South Mediterranean University Medtech} for providing the
+academic framework and resources that made this capstone project possible.
+
+Special thanks are due to \textbf{Tunisie Telecom} for their industry partnership and
+for providing real-world operational context that grounded the system design in practical
+cybersecurity requirements.  Their input regarding threat scenarios encountered in
+telecommunications environments was instrumental in refining the detection heuristics.
+
+Finally, I thank my fellow students and colleagues whose discussions and peer feedback
+contributed to a more robust and thoroughly tested final product.
 
 %% ── Abstract ─────────────────────────────────────────────────
 \chapter*{Abstract}
@@ -139,13 +241,15 @@ Zero-day vulnerabilities represent one of the most significant unsolved challeng
 modern cybersecurity.  Because no patch or signature exists at the moment of exploitation,
 traditional signature-based antivirus solutions are entirely blind to the initial attack
 vector.  This report presents the design, implementation, and evaluation of the
-\textit{Zero-Day Prevention System} (ZDPS) — a lightweight, behaviour-based Endpoint
-Detection and Response (EDR) tool implemented entirely in Python.
+\textit{Zero-Day Prevention System} (ZDPS) --- a lightweight, behaviour-based Endpoint
+Detection and Response (EDR) tool developed as part of a Licence in Computer Science
+capstone project at South Mediterranean University Medtech, in partnership with
+Tunisie Telecom.
 
 The system monitors running processes, file-system activity, and outgoing network
 connections in real time.  A multi-layered heuristic engine evaluates each new process
-against a set of behavioural indicators — execution path, whitelist membership, and
-resource consumption — and computes a numeric threat score in the range $[0, 100]$.
+against a set of behavioural indicators --- execution path, whitelist membership, and
+resource consumption --- and computes a numeric threat score in the range $[0, 100]$.
 Processes that exceed configurable thresholds are classified as High, Medium, or Low risk,
 logged to persistent storage, and optionally auto-terminated without operator intervention.
 
@@ -154,8 +258,8 @@ with a live, colour-coded alert table, summary statistics, and a REST API for pr
 consumption.  Thirty-nine automated unit tests validate detection accuracy, prevention
 logic, and dashboard routes.
 
-Evaluation against representative attack scenarios — binary drops to \texttt{/tmp/},
-CPU-hijacking via cryptominer injection, and execution of unknown binaries — demonstrates
+Evaluation against representative attack scenarios --- binary drops to \texttt{/tmp/},
+CPU-hijacking via cryptominer injection, and execution of unknown binaries --- demonstrates
 that the behaviour-based approach reliably identifies threats that elude signature-based
 defences.  The project serves as both a functional security tool and a reproducible
 academic artefact for the study of zero-day detection techniques.
@@ -168,6 +272,47 @@ detection, threat scoring, process monitoring, Python, Flask, cybersecurity.
 \tableofcontents
 \listoffigures
 \listoftables
+
+%% ── List of Abbreviations ────────────────────────────────────
+\chapter*{List of Abbreviations}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
+
+\begin{tabular}{@{}ll@{}}
+  \toprule
+  \textbf{Abbreviation} & \textbf{Definition} \\
+  \midrule
+  \textbf{AV}     & Antivirus \\
+  \textbf{APT}    & Advanced Persistent Threat \\
+  \textbf{API}    & Application Programming Interface \\
+  \textbf{CPU}    & Central Processing Unit \\
+  \textbf{CSV}    & Comma-Separated Values \\
+  \textbf{CVE}    & Common Vulnerabilities and Exposures \\
+  \textbf{DNS}    & Domain Name System \\
+  \textbf{DOM}    & Document Object Model \\
+  \textbf{eBPF}   & Extended Berkeley Packet Filter \\
+  \textbf{EDR}    & Endpoint Detection and Response \\
+  \textbf{HIDS}   & Host-Based Intrusion Detection System \\
+  \textbf{HIPS}   & Host-Based Intrusion Prevention System \\
+  \textbf{IDS}    & Intrusion Detection System \\
+  \textbf{IPS}    & Intrusion Prevention System \\
+  \textbf{JSON}   & JavaScript Object Notation \\
+  \textbf{LotL}   & Living-off-the-Land \\
+  \textbf{ML}     & Machine Learning \\
+  \textbf{PID}    & Process Identifier \\
+  \textbf{RAM}    & Random Access Memory \\
+  \textbf{REST}   & Representational State Transfer \\
+  \textbf{RSS}    & Resident Set Size \\
+  \textbf{SIEM}   & Security Information and Event Management \\
+  \textbf{SMTP}   & Simple Mail Transfer Protocol \\
+  \textbf{SOC}    & Security Operations Centre \\
+  \textbf{TCP}    & Transmission Control Protocol \\
+  \textbf{UDP}    & User Datagram Protocol \\
+  \textbf{UI}     & User Interface \\
+  \textbf{WSGI}   & Web Server Gateway Interface \\
+  \textbf{XDR}    & Extended Detection and Response \\
+  \textbf{ZDPS}   & Zero-Day Prevention System \\
+  \bottomrule
+\end{tabular}
 
 \clearpage
 \pagenumbering{arabic}
@@ -198,6 +343,12 @@ for days, weeks, or months before defenders had any automated means of detection
 This project addresses the zero-day detection problem at the endpoint level.  By shifting
 focus from \emph{what a process is} (identity) to \emph{what it does} (behaviour), the
 system can flag malicious activity even when no prior knowledge of the threat exists.
+
+This project was carried out in partnership with \textbf{Tunisie Telecom}, a leading
+telecommunications operator in Tunisia.  The telecom sector is a prime target for
+cyber-espionage and infrastructure attacks, making zero-day detection capabilities of
+particular operational relevance.  The collaboration provided real-world threat scenarios
+and deployment constraints that shaped the system design throughout this project.
 
 \section{Problem Statement}
 
