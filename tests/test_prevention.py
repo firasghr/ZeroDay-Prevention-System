@@ -89,3 +89,39 @@ class TestKillProcess(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestExportAlertsToCsv(unittest.TestCase):
+    """Tests for prevention.export_alerts_to_csv."""
+
+    def test_exports_alerts_to_csv(self):
+        alerts = [
+            {"timestamp": "2024-01-01T00:00:00+00:00", "pid": 1, "name": "proc1",
+             "cpu": 5.0, "memory": 50.0, "path": "/bin/proc1",
+             "threat_level": "low", "threat_score": 10},
+        ]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            alerts_path = os.path.join(tmp_dir, "alerts.json")
+            csv_path = os.path.join(tmp_dir, "export.csv")
+            with open(alerts_path, "w", encoding="utf-8") as f:
+                import json
+                json.dump(alerts, f)
+
+            with (
+                unittest.mock.patch.object(prevention, "ALERTS_FILE", alerts_path),
+                unittest.mock.patch.object(prevention, "LOGS_DIR", tmp_dir),
+            ):
+                out = prevention.export_alerts_to_csv(csv_path)
+
+            self.assertTrue(os.path.isfile(out))
+            with open(out, encoding="utf-8") as f:
+                content = f.read()
+            self.assertIn("proc1", content)
+            self.assertIn("timestamp", content)  # header row
+
+    def test_exports_empty_csv_when_no_alerts(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            csv_path = os.path.join(tmp_dir, "export.csv")
+            with unittest.mock.patch.object(prevention, "ALERTS_FILE", "/nonexistent.json"):
+                out = prevention.export_alerts_to_csv(csv_path)
+            self.assertTrue(os.path.isfile(out))

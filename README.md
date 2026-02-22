@@ -1,21 +1,15 @@
 # Zero-Day Prevention System
 
-A lightweight, real-time threat-detection and prevention system written in Python. It monitors running processes, file system activity, and outgoing network connections, flags suspicious behaviour, and exposes a web dashboard for reviewing alerts.
+> A production-grade, behaviour-based threat detection and auto-prevention platform written in Python.
 
 ---
 
-## Table of Contents
+## Abstract
 
-1. [Features](#features)
-2. [Architecture](#architecture)
-3. [Requirements](#requirements)
-4. [Installation](#installation)
-5. [Configuration](#configuration)
-6. [Usage](#usage)
-7. [Dashboard](#dashboard)
-8. [Project Structure](#project-structure)
-9. [How Detection Works](#how-detection-works)
-10. [Extending the System](#extending-the-system)
+The **Zero-Day Prevention System** is a lightweight Endpoint Detection and Response (EDR) tool that monitors a Linux or macOS host in real-time.  
+It inspects running processes, file-system activity, and outgoing network connections simultaneously, classifies suspicious activity using a configurable threat-scoring engine, and surfaces all findings through a browser-based security dashboard.
+
+Because detection is based on **process behaviour** (execution path, resource usage, whitelist deviation) rather than signature matching, the system can catch previously unknown threats — including zero-day exploits — without requiring antivirus-style signature updates.
 
 ---
 
@@ -23,56 +17,77 @@ A lightweight, real-time threat-detection and prevention system written in Pytho
 
 | Feature | Description |
 |---|---|
-| **Process Monitor** | Detects newly spawned processes every 2 s and evaluates them for suspicious activity |
-| **File Monitor** | Watches the project directory tree for file creations, modifications and deletions |
+| **Process Monitor** | Scans all new processes every 2 s and evaluates them against the detection engine |
+| **File Monitor** | Watches the project directory tree for file creations, modifications, and deletions |
 | **Network Monitor** | Tracks outgoing TCP/UDP connections every 5 s and reports new ones |
-| **Detection Engine** | Whitelist-based + threshold-based analysis (CPU %, RAM MB) |
-| **Prevention Module** | Persists alerts to `logs/alerts.json`; can forcibly terminate a process |
-| **Web Dashboard** | Flask app showing all alerts in a table with auto-refresh every 10 s |
+| **Detection Engine** | Whitelist + path + resource-threshold analysis (EDR-style multi-layered logic) |
+| **Threat Scoring** | Assigns a numeric score (0–100) and a risk level (High / Medium / Low) to every alert |
+| **Auto-Prevention** | Optionally auto-terminates HIGH-risk processes (`--auto-prevent` flag or `config.py`) |
+| **Web Dashboard** | Flask EDR dashboard with live alerts table, threat badges, search, and sort |
+| **Alert Persistence** | All alerts stored in `logs/alerts.json` with UTC timestamps |
+| **CSV Export** | Export the full alert history to CSV with `--export-csv <path>` |
+| **Email Alerts** | SMTP placeholder — configure credentials in `config.py` to enable |
+| **Centralized Config** | All thresholds and toggles in a single `config.py` — no code changes needed |
+| **Logging** | Structured logging (INFO / WARNING / ERROR / CRITICAL) via Python `logging` module |
+| **Unit Tests** | 39 pytest tests covering detection, prevention, scoring, export, and dashboard |
 
 ---
 
-## Architecture
+## Architecture Diagram
 
 ```
-┌──────────────────────────────────────────────┐
-│                  main.py                     │
-│  (launches all monitors + dashboard thread)  │
-└─────────┬──────────┬──────────┬──────────────┘
-          │          │          │
-  ┌───────▼──┐ ┌─────▼────┐ ┌──▼──────────┐  ┌──────────────┐
-  │ Process  │ │  File    │ │  Network    │  │  Dashboard   │
-  │ Monitor  │ │ Monitor  │ │  Monitor   │  │  (Flask :5000│
-  └───────┬──┘ └──────────┘ └─────┬───────┘  └──────────────┘
-          │                       │
-          ▼                       ▼
-   ┌─────────────┐         logs alerts (future)
-   │  Detection  │
-   │   Engine    │
-   └──────┬──────┘
-          │ suspicious?
-          ▼
-   ┌─────────────┐
-   │  Prevention │──► logs/alerts.json
-   │   Module    │
-   └─────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                          main.py                                │
+│         (parses CLI args, configures logging, spawns threads)   │
+└──────┬──────────┬────────────────┬──────────────────────────────┘
+       │          │                │                    │
+┌──────▼───┐ ┌───▼─────┐ ┌────────▼──────┐  ┌──────────▼──────────┐
+│ Process  │ │  File   │ │   Network     │  │  Dashboard (Flask)  │
+│ Monitor  │ │ Monitor │ │   Monitor     │  │  http://host:5001   │
+│ (2 s)    │ │(watchdog│ │    (5 s)      │  │  /api/alerts        │
+│          │ │ events) │ │               │  │  /api/stats         │
+└──────┬───┘ └─────────┘ └───────────────┘  └─────────────────────┘
+       │
+       ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Detection Engine                          │
+│  1. Trusted-path fast-path  (/System/, /usr/, /opt/homebrew/)│
+│  2. Browser/OS helper bypass (Renderer, GPU, WebKit, ...)    │
+│  3. Suspicious-path check   (/tmp/, /var/tmp/, ~/Downloads/) │
+│  4. Whitelist check         (whitelist.json)                 │
+│  5. Resource thresholds     (CPU > 85%, RAM > 800 MB)        │
+│  ─────────────────────────────────────────────────────────── │
+│  calculate_threat_score()   → 0-100 numeric score            │
+│  get_threat_level()         → high / medium / low            │
+└──────────────────────────────┬───────────────────────────────┘
+                               │  suspicious?
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Prevention Module                         │
+│  log_alert()          → append to logs/alerts.json           │
+│  kill_process()       → psutil.terminate() (if auto-prevent) │
+│  export_alerts_to_csv()→ write CSV file                      │
+│  send_email_alert()   → SMTP notification (optional)         │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-All monitors run as daemon threads inside `main.py` so a single `Ctrl+C` shuts everything down cleanly.
+All monitors run as **daemon threads** inside `main.py`.  A single `Ctrl+C` shuts everything down cleanly.
 
 ---
 
 ## Requirements
 
-- Python 3.9+
-- Linux / macOS (Windows support is limited — `psutil.net_connections` requires elevated privileges on Windows)
+- Python 3.10+
+- Linux / macOS  
+  *(Windows: `psutil.net_connections` requires elevated privileges)*
 
-Python dependencies (see `requirements.txt`):
+Python dependencies (`requirements.txt`):
 
 ```
 psutil>=5.9.0
 watchdog>=3.0.0
 flask>=3.0.0
+pytest>=7.0.0
 ```
 
 ---
@@ -94,99 +109,122 @@ pip install -r requirements.txt
 
 ---
 
-## Configuration
-
-### Whitelist — `whitelist.json`
-
-The detection engine loads a list of trusted process names from `whitelist.json` at the project root. Any new process whose name is **not** in this list is immediately flagged as suspicious.
-
-```json
-{
-  "whitelist": [
-    "bash",
-    "python3",
-    "nginx",
-    "sshd"
-  ]
-}
-```
-
-The whitelist is **hot-reloaded**: the engine checks the file's modification time on every evaluation, so you can edit `whitelist.json` while the system is running without restarting it.
-
-### Detection Thresholds — `engine/detection_engine.py`
-
-Two numeric thresholds can be adjusted at the top of the file:
-
-| Constant | Default | Meaning |
-|---|---|---|
-| `CPU_THRESHOLD` | `80` | Flag a process if its CPU usage exceeds this percentage |
-| `MEMORY_THRESHOLD` | `500` | Flag a process if its RSS memory exceeds this value in MB |
-
----
-
 ## Usage
 
-### Run the full system (monitors + dashboard)
+### Run the full system
 
 ```bash
 python main.py
 ```
 
-The system starts four daemon threads:
+### CLI Options
 
-| Thread | Purpose |
-|---|---|
-| `ProcessMonitor` | New-process detection |
-| `FileMonitor` | File system watcher |
-| `NetworkMonitor` | Outgoing connection tracker |
-| `Dashboard` | Flask web UI on port 5000 |
+```
+usage: main.py [-h] [--port PORT] [--log-level LEVEL] [--auto-prevent] [--export-csv PATH]
 
-Press **Ctrl+C** to shut everything down.
-
-### Run only the dashboard
-
-```bash
-python dashboard/app.py
+options:
+  --port PORT           Dashboard port (default: 5001)
+  --log-level LEVEL     DEBUG | INFO | WARNING | ERROR | CRITICAL (default: INFO)
+  --auto-prevent        Automatically terminate HIGH-risk processes
+  --export-csv PATH     Export current alerts to a CSV file and exit
 ```
 
-Then open <http://localhost:5000> in a browser.
+### Examples
 
-### Run individual monitors
+```bash
+# Start with debug logging
+python main.py --log-level DEBUG
+
+# Enable auto-prevention mode
+python main.py --auto-prevent
+
+# Export alerts to CSV and exit
+python main.py --export-csv /tmp/alerts_export.csv
+
+# Run on a custom port
+python main.py --port 8080
+```
+
+### Run individual modules
 
 ```bash
 python agent/process_monitor.py
-python file_monitor/file_monitor.py [path]   # defaults to current directory
+python file_monitor/file_monitor.py [path]
 python network/network_monitor.py
+python dashboard/app.py
 ```
 
 ---
 
 ## Dashboard
 
-The web dashboard auto-refreshes every **10 seconds** and displays all recorded alerts.
+Open **http://localhost:5001** after starting the system.
 
-![dashboard screenshot placeholder](https://via.placeholder.com/800x300?text=Zero-Day+Dashboard)
+The dashboard:
+- Auto-refreshes every **5 seconds** via JavaScript `fetch`
+- Shows all alerts in a sortable, searchable table
+- Colour-codes rows by threat level (High / Medium / Low)
+- Displays a numeric **Threat Score** (0–100) for each alert
+- Exposes a REST API for programmatic access
 
-It also exposes a REST endpoint for programmatic access:
+### API Endpoints
 
-```
-GET /api/alerts          → JSON array of all alert objects
-```
+| Endpoint | Description |
+|---|---|
+| `GET /api/alerts` | Full alert list as JSON array (with enriched threat scores) |
+| `GET /api/stats` | Summary statistics: totals by level, last detection timestamp |
 
-Example response:
+#### `/api/alerts` example response
 
 ```json
 [
   {
     "timestamp": "2024-01-15T12:34:56.789012+00:00",
     "pid": 1234,
-    "name": "suspicious_proc",
+    "name": "evil_proc",
     "cpu": 95.3,
     "memory": 612.1,
-    "path": "/tmp/suspicious_proc"
+    "path": "/tmp/evil_proc",
+    "threat_level": "high",
+    "threat_score": 90
   }
 ]
 ```
+
+---
+
+## Screenshots
+
+*[Dashboard screenshot placeholder — run the system and capture the live dashboard]*
+
+---
+
+## Configuration
+
+All parameters live in **`config.py`**:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `CPU_THRESHOLD` | `85.0` | Flag a process whose CPU exceeds this % |
+| `MEMORY_THRESHOLD` | `800.0` | Flag a process whose RAM exceeds this MB |
+| `THREAT_HIGH_SCORE` | `70` | Score ≥ this → HIGH risk |
+| `THREAT_MEDIUM_SCORE` | `30` | Score ≥ this → MEDIUM risk |
+| `AUTO_PREVENTION_ENABLED` | `False` | Auto-kill HIGH-risk processes |
+| `DASHBOARD_PORT` | `5001` | Flask dashboard port |
+| `PROCESS_MONITOR_INTERVAL` | `2` | Seconds between process scans |
+| `NETWORK_MONITOR_INTERVAL` | `5` | Seconds between network scans |
+| `EMAIL_ALERTS_ENABLED` | `False` | Send SMTP email on each alert |
+| `LOG_LEVEL` | `"INFO"` | Logging verbosity |
+
+### Whitelist — `whitelist.json`
+
+```json
+{
+  "whitelist": ["bash", "python3", "nginx", "sshd"]
+}
+```
+
+The whitelist is **hot-reloaded**: the engine checks the file's mtime on every evaluation, so you can edit it while the system is running.
 
 ---
 
@@ -194,73 +232,131 @@ Example response:
 
 ```
 cyberproject/
-├── main.py                   # Entry point — starts all threads
-├── requirements.txt          # Python dependencies
-├── whitelist.json            # Trusted process names
+├── main.py                    # Entry point — CLI args, logging, thread launcher
+├── config.py                  # Centralized configuration
+├── requirements.txt           # Python dependencies
+├── whitelist.json             # Trusted process names
+├── Dockerfile                 # Container image definition
+├── README.md                  # This file
+├── TECHNICAL_DOCUMENTATION.md # Architecture & design decisions
+├── REPORT_SUMMARY.md          # Academic capstone summary
 ├── agent/
 │   ├── __init__.py
-│   ├── process_monitor.py    # Detects new processes
-│   └── prevention.py         # Logs alerts, can terminate processes
+│   ├── process_monitor.py     # New-process detection + auto-prevention
+│   └── prevention.py          # Alert logging, kill, CSV export, email
 ├── engine/
 │   ├── __init__.py
-│   └── detection_engine.py   # Whitelist + threshold analysis
+│   └── detection_engine.py    # Whitelist + threat scoring analysis
 ├── file_monitor/
 │   ├── __init__.py
-│   └── file_monitor.py       # Watchdog-based FS watcher
+│   └── file_monitor.py        # Watchdog-based file-system watcher
 ├── network/
 │   ├── __init__.py
-│   └── network_monitor.py    # psutil-based connection tracker
+│   └── network_monitor.py     # psutil-based outgoing connection tracker
 ├── dashboard/
 │   ├── __init__.py
-│   └── app.py                # Flask web dashboard
-└── logs/
-    └── alerts.json           # Persisted alert records (auto-created)
+│   ├── app.py                 # Flask routes (/  /api/alerts  /api/stats)
+│   ├── templates/
+│   │   └── index.html         # EDR dashboard HTML
+│   └── static/
+│       ├── script.js          # Live-refresh fetch logic, threat scoring
+│       └── style.css          # Dashboard CSS
+├── logs/
+│   └── alerts.json            # Persisted alert records (auto-created)
+└── tests/
+    ├── test_dashboard.py      # Flask route and helper tests
+    ├── test_detection_engine.py  # Detection + scoring tests
+    └── test_prevention.py     # Alert logging, kill, CSV export tests
 ```
 
 ---
 
-## How Detection Works
+## Technologies Used
 
-### Process Detection (`engine/detection_engine.py`)
-
-`is_process_suspicious(process_info)` returns `True` if **any** of the following conditions hold:
-
-1. The process **name is not in the whitelist**
-2. CPU usage > `CPU_THRESHOLD` (default 80 %)
-3. Memory usage > `MEMORY_THRESHOLD` (default 500 MB)
-4. Executable **path is missing** (e.g. the binary was deleted after launch)
-
-### Alert Lifecycle
-
-1. `process_monitor.monitor_processes()` spots a new PID.
-2. It calls `detection_engine.is_process_suspicious()`.
-3. If suspicious → `prevention.log_alert()` appends a JSON record to `logs/alerts.json`.
-4. The Flask dashboard reads `logs/alerts.json` on each page load.
-
-### Terminating a Process
-
-The `prevention.kill_process(pid)` helper is available for automated response:
-
-```python
-from agent.prevention import kill_process
-kill_process(1234)
-```
-
-It uses `psutil.Process.terminate()` and handles `NoSuchProcess`, `AccessDenied`, and `ZombieProcess` gracefully.
+| Technology | Purpose |
+|---|---|
+| Python 3.10+ | Core implementation language |
+| psutil | Process inspection and network connection enumeration |
+| watchdog | File-system event monitoring |
+| Flask | Web dashboard and REST API |
+| pytest | Unit test framework |
+| Python `logging` | Structured application logging |
+| Python `threading` | Concurrent monitor execution |
+| Python `csv` / `json` | Alert persistence and export |
+| Python `smtplib` | Email alert delivery (SMTP) |
+| HTML / CSS / JavaScript | Dashboard front-end |
 
 ---
 
-## Extending the System
+## Security Model
 
-### Add a new monitor
+### Behaviour-Based Detection
 
-1. Create a new module (e.g. `usb_monitor/usb_monitor.py`) with a blocking `monitor_*()` function.
-2. Import and add a `threading.Thread` for it in `main.py`.
+Rather than maintaining a signature database, the system evaluates **process behaviour** at runtime:
 
-### Persist network / file alerts
+1. **Execution path analysis** — processes spawned from `/tmp/`, `/var/tmp/`, or `~/Downloads` are always treated as high-risk, regardless of name.
+2. **Whitelist deviation** — any process not listed in `whitelist.json` is flagged unless its executable lives in a trusted system directory.
+3. **Resource abuse detection** — processes consuming abnormal CPU or memory trigger alerts even if they are otherwise whitelisted (cryptominer / code-injection scenario).
+4. **Multi-layered scoring** — a numeric threat score aggregates all risk factors to prioritise analyst attention.
 
-The network and file monitors currently print events to stdout only. To persist them, import `prevention.log_alert` and call it with a dict containing at least `name`, `pid`, `cpu`, `memory`, and `path`.
+### Zero-Day Prevention Explanation
 
-### Change alert storage
+A zero-day exploit targets an unknown vulnerability for which no patch or signature exists.  
+Traditional AV tools cannot detect it because there is no known signature to match.
 
-`prevention.py` writes to `logs/alerts.json`. Replace the read/write logic there to send alerts to a database, syslog, or SIEM of your choice.
+This system detects zero-days by analysing **what a process does**, not what it is called:
+- A malicious binary dropped in `/tmp/` by an exploit will be flagged the moment it executes.
+- A compromised legitimate process that starts consuming excessive CPU (e.g., crypto-miner injected via memory corruption) will be flagged by the resource threshold.
+- Auto-prevention can terminate the offending process before it causes damage.
+
+---
+
+## Limitations
+
+- **Single host** — the system monitors only the host it runs on; it is not a network-wide SIEM.
+- **No kernel-level hooks** — running as a user-space daemon means an adversary with root access can potentially bypass monitoring by terminating the process.
+- **macOS network visibility** — `psutil.net_connections()` requires `sudo` on macOS; run with elevated privileges for full network monitoring.
+- **File-system monitoring scope** — the file monitor watches the project directory by default; configure `MONITOR_PATH` in `main.py` to watch critical system directories.
+- **Whitelist cold-start** — at first run, many legitimate processes are flagged until `whitelist.json` is tuned to the environment.
+
+---
+
+## Future Improvements
+
+- Kernel-level hooks via eBPF for tamper-resistant monitoring
+- SIEM integration (Splunk, Elastic) via structured JSON log forwarding
+- Machine-learning anomaly detection as a secondary scoring layer
+- Windows support with Win32 API / WMI event subscriptions
+- Multi-host centralised alert collection
+- Automated whitelist learning mode
+- Dashboard authentication layer
+
+---
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
+
+Expected: **39 tests passed**.
+
+---
+
+## Docker
+
+```bash
+docker build -t zero-day-prevention .
+docker run -p 5001:5001 zero-day-prevention
+```
+
+---
+
+## Author
+
+**Firas Ghr**  
+Cybersecurity Engineering Capstone Project  
+Academic Year 2024–2025
+
+
+---

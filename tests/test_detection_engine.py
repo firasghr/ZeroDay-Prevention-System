@@ -122,3 +122,71 @@ class TestIsProcessSuspicious(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCalculateThreatScore(unittest.TestCase):
+    """Tests for detection_engine.calculate_threat_score."""
+
+    def _make_info(self, name="bash", cpu=10, memory=100, path="/bin/bash"):
+        return {"name": name, "cpu": cpu, "memory": memory, "path": path}
+
+    def test_suspicious_path_raises_score(self):
+        with patch.object(detection_engine, "load_whitelist", return_value={"bash"}):
+            score = detection_engine.calculate_threat_score(
+                self._make_info(path="/tmp/evil")
+            )
+        self.assertGreater(score, 0)
+
+    def test_missing_path_raises_score(self):
+        with patch.object(detection_engine, "load_whitelist", return_value={"bash"}):
+            score_none = detection_engine.calculate_threat_score(self._make_info(path=None))
+            score_empty = detection_engine.calculate_threat_score(self._make_info(path=""))
+        self.assertGreater(score_none, 0)
+        self.assertGreater(score_empty, 0)
+
+    def test_high_cpu_raises_score(self):
+        with patch.object(detection_engine, "load_whitelist", return_value={"bash"}):
+            score = detection_engine.calculate_threat_score(
+                self._make_info(cpu=detection_engine.CPU_THRESHOLD + 1)
+            )
+        self.assertGreater(score, 0)
+
+    def test_score_capped_at_100(self):
+        with patch.object(detection_engine, "load_whitelist", return_value=set()):
+            score = detection_engine.calculate_threat_score(
+                self._make_info(
+                    name="evil",
+                    cpu=detection_engine.CPU_THRESHOLD + 10,
+                    memory=detection_engine.MEMORY_THRESHOLD + 100,
+                    path="/tmp/evil",
+                )
+            )
+        self.assertLessEqual(score, 100)
+
+    def test_safe_process_scores_low(self):
+        with patch.object(detection_engine, "load_whitelist", return_value={"bash"}):
+            score = detection_engine.calculate_threat_score(self._make_info())
+        self.assertLess(score, detection_engine.config.THREAT_HIGH_SCORE)
+
+
+class TestGetThreatLevel(unittest.TestCase):
+    """Tests for detection_engine.get_threat_level."""
+
+    def test_high_score_returns_high(self):
+        self.assertEqual(
+            detection_engine.get_threat_level(detection_engine.config.THREAT_HIGH_SCORE),
+            "high",
+        )
+
+    def test_medium_score_returns_medium(self):
+        self.assertEqual(
+            detection_engine.get_threat_level(detection_engine.config.THREAT_MEDIUM_SCORE),
+            "medium",
+        )
+
+    def test_low_score_returns_low(self):
+        self.assertEqual(detection_engine.get_threat_level(0), "low")
+        self.assertEqual(
+            detection_engine.get_threat_level(detection_engine.config.THREAT_MEDIUM_SCORE - 1),
+            "low",
+        )
